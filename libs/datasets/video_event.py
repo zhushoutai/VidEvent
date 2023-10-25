@@ -155,7 +155,7 @@ class VideoEventDataset(Dataset):
         filename = os.path.join(self.feat_folder,
                                 self.file_prefix + video_item['id'] + self.file_ext)
         with np.load(filename) as data:
-            feats = data['feats'].astype(np.float32)
+            feats = data.astype(np.float32)
 
         # deal with downsampling (= increased feat stride)
         feats = feats[::self.downsample_rate, :]
