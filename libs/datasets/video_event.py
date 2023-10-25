@@ -156,8 +156,8 @@ class VideoEventDataset(Dataset):
                                 self.file_prefix + video_item['id'] + self.file_ext)
         if not os.path.exists(filename):
             print('ERROR: feature file %s not found!' % filename)
-        with np.load(filename) as data:
-            feats = data.astype(np.float32)
+        # with np.load(filename) as data:
+        feats = np.load(filename).astype(np.float32)
 
         # deal with downsampling (= increased feat stride)
         feats = feats[::self.downsample_rate, :]
