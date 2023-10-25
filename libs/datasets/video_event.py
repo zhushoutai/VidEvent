@@ -9,7 +9,7 @@ from torch.nn import functional as F
 from .datasets import register_dataset
 from .data_utils import truncate_feats
 
-@register_dadataset("videoevent")
+@register_dataset("videoevent")
 class VideoEventDataset(Dataset):
     def __init__(
         self,
