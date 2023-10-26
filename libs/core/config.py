@@ -5,7 +5,7 @@ DEFAULTS = {
     "init_rand_seed": 1234567891,
     # dataset loader, specify the dataset here
     "dataset_name": "epic",
-    "devices": ['cuda:0'],  # default: single gpu
+    "devices": ['cuda:1'],  # default: single gpu
     "train_split": ('training',),
     "val_split": ('validation',),
     "model_name": "TriDet",
