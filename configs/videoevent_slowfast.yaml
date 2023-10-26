@@ -6,7 +6,7 @@ dataset: {
   feat_folder: '/data/tiktokCrawler/video_feat_extract/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
-  num_classes: 1845,
+  num_classes: 3,
   input_dim: 2304,
   feat_stride: 1,
   num_frames: 16,
