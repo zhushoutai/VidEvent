@@ -2,7 +2,7 @@ dataset_name: videoevent
 train_split: ['training']
 val_split: ['validation']
 dataset: {
-  json_file: ./data/videoevent/annotations/videoevent.json,
+  json_file: ./data/videoevent/annotations/select_action.json,
   feat_folder: '/data/tiktokCrawler/video_feat_extract/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
