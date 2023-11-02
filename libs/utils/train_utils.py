@@ -261,7 +261,7 @@ def train_one_epoch(
         curr_epoch,
         model_ema=None,
         clip_grad_l2norm=-1,
-        print_freq=2
+        print_freq=20
 ):
     """Training the model for one epoch"""
     # set up meters

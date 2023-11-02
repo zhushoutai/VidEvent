@@ -125,7 +125,7 @@ def main(args):
             epoch,
             model_ema=model_ema,
             clip_grad_l2norm=cfg['train_cfg']['clip_grad_l2norm'],
-            print_freq=args.print_freq
+            print_freq=1
         )
 
         # save ckpt once in a while
