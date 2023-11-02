@@ -169,7 +169,8 @@ class VideoEventDataset(Dataset):
         # ok to have small negative values here
         if video_item['segments'] is not None:
             segments = torch.from_numpy(
-                (video_item['segments'] * video_item['fps'] - 0.5 * self.num_frames) / feat_stride
+                # (video_item['segments'] * video_item['fps'] - 0.5 * self.num_frames) / feat_stride
+                (video_item['segments'] * video_item['fps']) / feat_stride
             )
             labels = torch.from_numpy(video_item['labels'])
         else:
