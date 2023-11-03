@@ -156,6 +156,8 @@ class VideoEventDataset(Dataset):
                                 self.file_prefix + video_item['id'] + self.file_ext)
         if not os.path.exists(filename):
             print('ERROR: feature file %s not found!' % filename)
+        else:
+            print('loading %s' % filename)
         # with np.load(filename) as data:
         feats = np.load(filename, allow_pickle=True).astype(np.float32)
         print('feats.shape', feats.shape)
