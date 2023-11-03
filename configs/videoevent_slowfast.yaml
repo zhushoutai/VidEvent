@@ -3,14 +3,14 @@ train_split: ['training']
 val_split: ['validation']
 dataset: {
   json_file: ./data/videoevent/annotations/videoevent_new.json,
-  feat_folder: '/data1/tiktokCrawler/video_feat_extract/slowfast_features',
+  feat_folder: '/data2/video_feat_extract/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
   num_classes: 5,
   input_dim: 2304,
-  feat_stride: 1,
-  num_frames: 16,
-  default_fps: 10,
+  feat_stride: 16,
+  num_frames: 32,
+  default_fps: 30,
   trunc_thresh: 0.3,
   crop_ratio: [0.9, 1.0],
   max_seq_len: 2304,
@@ -26,12 +26,12 @@ model: {
   k: 2,
 }
 opt: {
-  learning_rate: 0.0001,
-  epochs: 10,
-  weight_decay: 0.0001,
+  learning_rate: 0.00001,
+  epochs: 30,
+  weight_decay: 0.00001,
 }
 loader: {
-  batch_size: 2,
+  batch_size: 8,
 }
 train_cfg: {
   init_loss_norm: 100,
