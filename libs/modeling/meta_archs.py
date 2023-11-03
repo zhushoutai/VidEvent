@@ -921,8 +921,8 @@ class TriDet(nn.Module):
                 )
             # 3: convert from feature grids to seconds
             if segs.shape[0] > 0:
-                # segs = (segs * stride + 0.5 * nframes) / fps
-                segs = segs * stride / fps
+                segs = (segs * stride + 0.5 * nframes) / fps
+                # segs = segs * stride / fps
                 # truncate all boundaries within [0, duration]
                 segs[segs <= 0.0] *= 0.0
                 segs[segs >= vlen] = segs[segs >= vlen] * 0.0 + vlen
