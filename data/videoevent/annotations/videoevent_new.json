@@ -9400,36 +9400,6 @@
                 }
             ]
         },
-        "中日韩都拍过一遍的离奇故事，荒村野店连续发生命案，真相超奇葩（33） ": {
-            "subset": "validation",
-            "duration": 245.16,
-            "annotations": [
-                {
-                    "segment": [
-                        0.118,
-                        0.238
-                    ],
-                    "label": "tell",
-                    "label_id": 4
-                },
-                {
-                    "segment": [
-                        0.317,
-                        0.437
-                    ],
-                    "label": "find",
-                    "label_id": 1
-                },
-                {
-                    "segment": [
-                        3.55,
-                        3.651
-                    ],
-                    "label": "find",
-                    "label_id": 1
-                }
-            ]
-        },
         "有个爱装大款的男朋友，到底是什么体验*电影浩哥爱情故事 *电影浩哥爱情 ": {
             "subset": "validation",
             "duration": 125.04347826086956,
