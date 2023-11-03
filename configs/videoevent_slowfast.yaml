@@ -3,7 +3,7 @@ train_split: ['training']
 val_split: ['validation']
 dataset: {
   json_file: ./data/videoevent/annotations/videoevent_new.json,
-  feat_folder: '/data2/video_feat_extract/slowfast_features',
+  feat_folder: '/data2/video_feat_extract/slowfast_features_30fps',
   file_prefix: ,
   file_ext: .npy,
   num_classes: 5,
