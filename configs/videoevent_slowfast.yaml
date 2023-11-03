@@ -26,7 +26,7 @@ model: {
   k: 2,
 }
 opt: {
-  learning_rate: 0.000001,
+  learning_rate: 0.00001,
   epochs: 5,
   weight_decay: 0.00001,
 }
