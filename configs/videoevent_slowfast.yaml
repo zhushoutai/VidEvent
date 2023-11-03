@@ -2,11 +2,11 @@ dataset_name: videoevent
 train_split: ['training']
 val_split: ['validation']
 dataset: {
-  json_file: ./data/videoevent/annotations/select_action.json,
+  json_file: ./data/videoevent/annotations/video_event.json,
   feat_folder: '/data2/video_feat_extract/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
-  num_classes: 4,
+  num_classes: 1845,
   input_dim: 2304,
   feat_stride: 16,
   num_frames: 32,
