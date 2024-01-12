@@ -566,7 +566,7 @@ class TriDet(nn.Module):
 
         # compute the lengths of all segments -> F T x N
         lens = gt_segment[:, 1] - gt_segment[:, 0]
-        lens = lens[None, :].repeat(num_pts, 1)
+        lens = lens[None, :].repeat(num_pts, 1)      # lens : pts:gts
 
         # compute the distance of every point to each segment boundary
         # auto broadcasting for all reg target-> F T x N x2

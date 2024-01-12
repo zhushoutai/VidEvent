@@ -9,6 +9,8 @@ from typing import List
 from typing import Tuple
 from typing import Dict
 
+import pickle
+from utils.vocabulary import Vocabulary,Word2VecSimilarity
 
 def remove_duplicate_annotations(ants, tol=1e-3):
     # remove duplicate annotations (same category and starting/ending time)
@@ -28,34 +30,102 @@ def remove_duplicate_annotations(ants, tol=1e-3):
     return valid_events
 
 
+# def load_gt_seg_from_json(json_file, split=None, label='label_id', label_offset=0):
+#     # load json file
+#     with open(json_file, "r", encoding="utf8") as f:
+#         json_db = json.load(f)
+#     json_db = json_db['database']
+
+#     vids, starts, stops, labels = [], [], [], []
+#     for k, v in json_db.items():
+
+#         # filter based on split
+#         if (split is not None) and v['subset'].lower() != split:
+#             continue
+#         # remove duplicated instances
+#         ants = remove_duplicate_annotations(v['annotations'])
+#         # video id
+#         vids += [k] * len(ants)
+#         # for each event, grab the start/end time and label
+#         for event in ants:
+#             starts += [float(event['segment'][0])]
+#             stops += [float(event['segment'][1])]
+#             if isinstance(event[label], (Tuple, List)):
+#                 # offset the labels by label_offset
+#                 label_id = 0
+#                 for i, x in enumerate(event[label][::-1]):
+#                     label_id += label_offset ** i + int(x)
+#             else:
+#                 # load label_id directly
+#                 label_id = int(event[label])
+#             labels += [label_id]
+
+#     # move to pd dataframe
+#     gt_base = pd.DataFrame({
+#         'video-id': vids,
+#         't-start': starts,
+#         't-end': stops,
+#         'label': labels
+#     })
+
+#     return gt_base
+
 def load_gt_seg_from_json(json_file, split=None, label='label_id', label_offset=0):
     # load json file
     with open(json_file, "r", encoding="utf8") as f:
         json_db = json.load(f)
-    json_db = json_db['database']
 
     vids, starts, stops, labels = [], [], [], []
-    for k, v in json_db.items():
+
+    label_dict = {}
+    # cur_id = 0
+    # for vid in json_db:
+    #             for clip in vid["clip"]:
+    #                 if clip["event"] not in label_dict:
+    #                     label_dict[clip["event"]] = cur_id
+    #                     cur_id +=1
+    #222222222222222
+    # vocab_file = "/data1/zst/help_TriDet/VideoEvent/data/vocab/latest5_vocabulary.pkl"
+    # with open(vocab_file, "rb") as v:
+    #     vocab = pickle.load(v)
+    # label_dict = vocab.get_vocabulary_as_dict()
+
+    with open("/data1/zst/help_TriDet/VideoEvent/data/vocab/latest_1_10_vocabulary.pkl",'rb') as x:
+            didi = pickle.load(x)
+    label_dict = didi['dict1']
+
+    #date 1_12
+    for k,v in label_dict.items():
+        label_dict[k] =0
+
+    for video in json_db:
 
         # filter based on split
-        if (split is not None) and v['subset'].lower() != split:
+        if (split is not None) and video['subset'].lower() != split:
             continue
         # remove duplicated instances
-        ants = remove_duplicate_annotations(v['annotations'])
+        # ants = remove_duplicate_annotations(v['annotations'])
         # video id
-        vids += [k] * len(ants)
+        #vids += [video['videoID']] * len(video['clip'])
         # for each event, grab the start/end time and label
-        for event in ants:
-            starts += [float(event['segment'][0])]
-            stops += [float(event['segment'][1])]
-            if isinstance(event[label], (Tuple, List)):
-                # offset the labels by label_offset
-                label_id = 0
-                for i, x in enumerate(event[label][::-1]):
-                    label_id += label_offset ** i + int(x)
-            else:
-                # load label_id directly
-                label_id = int(event[label])
+        for event in video['clip']:
+            hhevent = event["event"]
+            hhevent = hhevent.strip()
+            if hhevent.endswith('\n'):
+                hhevent = hhevent[:-2]
+            if hhevent == "":
+                continue
+            vids += [video['videoID']]
+            starts += [float(event['timeStart']/1000)]
+            stops += [float(event['timeEnd']/1000)]
+           
+            # load label_id directly
+            # hhevent = str(event["event"]).strip()
+           
+            # if hhevent == "":
+            #     continue
+            #label_id = int(label_dict[event['event']])
+            label_id = label_dict[hhevent]
             labels += [label_id]
 
     # move to pd dataframe
@@ -171,6 +241,10 @@ class ANETdetection(object):
         for i, cidx in enumerate(self.activity_index.values()):
             ap[:, cidx] = results[i]
 
+        print('Debugging Information:')
+        print('Results:', results)
+        print('AP Matrix:', ap)
+
         return ap
 
     def evaluate(self, preds, verbose=True):
@@ -201,10 +275,19 @@ class ANETdetection(object):
         # make the label ids consistent
         preds['label'] = preds['label'].replace(self.activity_index)
 
+        print(f"len_labels{len(self.activity_index)}")
+
         # compute mAP
         self.ap = self.wrapper_compute_average_precision(preds)
+        #####1111
+        print('Shape of self.ap:', self.ap.shape)
+
         mAP = self.ap.mean(axis=1)
         average_mAP = mAP.mean()
+
+        print('mAP:', mAP,mAP.shape)
+        print('average_mAP:', average_mAP,average_mAP.shape)
+
 
         # print results
         if verbose:

@@ -151,5 +151,39 @@ def postprocess_results(results, cls_score_file, num_pred=200, topk=2):
         processed_results['label'],axis=0)
     processed_results['score'] = np.concatenate(
         processed_results['score'], axis=0)
+    
+
+
+  # 处理每个视频的识别结果
+    for vid, result in results.items():
+        # 获取当前视频的分类分数
+        curr_cls_scores = np.asarray(cls_scores[vid])
+        topk_cls_idx = np.argsort(curr_cls_scores)[::-1][:topk]
+        topk_cls_score = curr_cls_scores[topk_cls_idx]
+
+        # 获取模型输出的结果
+        pred_score, pred_segment, pred_label = \
+            result['score'], result['segment'], result['label']
+        num_segs = min(num_pred, len(pred_score))
+
+        # 复制所有的时间段，并分配前k个标签
+        new_pred_score = np.sqrt(topk_cls_score[:, None] @ pred_score[None, :]).flatten()
+        new_pred_segment = np.tile(pred_segment, (topk, 1))
+        new_pred_label = np.tile(topk_cls_idx[:, None], (1, num_segs)).flatten()
+
+        # 添加到结果中
+        processed_results['video-id'].extend([vid] * num_segs * topk)
+        processed_results['t-start'].append(new_pred_segment[:, 0])
+        processed_results['t-end'].append(new_pred_segment[:, 1])
+        processed_results['label'].append(new_pred_label)
+        processed_results['score'].append(new_pred_score)
+
+        # 打印当前视频的所有识别结果
+        print(f"Video ID: {vid}")
+        for idx in range(num_segs * topk):
+            print(f"Segment {idx + 1}: Start: {new_pred_segment[idx, 0]}, "
+                  f"End: {new_pred_segment[idx, 1]}, "
+                  f"Label: {new_pred_label[idx]}, "
+                  f"Score: {new_pred_score[idx]}")
 
     return processed_results

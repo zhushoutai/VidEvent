@@ -2,11 +2,12 @@ dataset_name: videoevent
 train_split: ['training']
 val_split: ['validation']
 dataset: {
-  json_file: ./data/videoevent/annotations/videoevent_new.json,
-  feat_folder: '/data2/video_feat_extract/slowfast_features_30fps',
+  json_file: /data1/zst/help_TriDet/TriDet/data/videoevent/annotations/chg3_videoevent_latest.json,      #./data/videoevent/annotations/videoevent_new.json,
+  # feat_folder: '/data2/video_feat_extract/slowfast_features_30fps',
+  feat_folder: '/data1/data/tiktokCrawler/video_feat_extract/new_videnent_features',     #'/data1/zst/help_TriDet/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
-  num_classes: 5,
+  num_classes: 1,   #433,   #502,      #1872,        #1366,                 #962, ###2   #1874
   input_dim: 2304,
   feat_stride: 16,
   num_frames: 32,
@@ -27,7 +28,7 @@ model: {
 }
 opt: {
   learning_rate: 0.00001,
-  epochs: 100,
+  epochs: 200,
   weight_decay: 0.00001,
 }
 loader: {
@@ -42,9 +43,9 @@ train_cfg: {
 }
 test_cfg: {
   pre_nms_topk: 5000,
-  max_seg_num: 2000,
+  max_seg_num: 2000,    #2000,
   min_score: 0.001,
   nms_sigma: 0.9,
   multiclass_nms: True,
 }
-output_folder: ./ckpt/
+output_folder: ./newckpt9/

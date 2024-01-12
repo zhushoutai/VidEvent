@@ -17,6 +17,8 @@ from libs.datasets import make_dataset, make_data_loader
 from libs.modeling import make_meta_arch
 from libs.utils import valid_one_epoch, ANETdetection, fix_random_seed
 
+import pickle
+from utils.vocabulary import Vocabulary,Word2VecSimilarity
 
 ################################################################################
 def main(args):

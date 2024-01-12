@@ -3,6 +3,7 @@ import pickle
 import random
 import time
 from copy import deepcopy
+import json
 
 import numpy as np
 import torch
@@ -12,6 +13,9 @@ import torch.optim as optim
 from .lr_schedulers import LinearWarmupMultiStepLR, LinearWarmupCosineAnnealingLR
 from .postprocessing import postprocess_results
 from ..modeling import MaskedConv1D, Scale, AffineDropPath, LayerNorm
+
+import pickle
+from utils.vocabulary import Vocabulary,Word2VecSimilarity
 
 
 ################################################################################
@@ -252,7 +256,96 @@ class ModelEma(torch.nn.Module):
         self._update(model, update_fn=lambda e, m: m)
 
 
-################################################################################
+################################################################################ 1
+# def train_one_epoch(
+#         train_loader,
+#         model,
+#         optimizer,
+#         scheduler,
+#         curr_epoch,
+#         model_ema=None,
+#         clip_grad_l2norm=-1,
+#         print_freq=20
+# ):
+#     """Training the model for one epoch"""
+#     # set up meters
+#     batch_time = AverageMeter()
+#     losses_tracker = {}
+#     # number of iterations per epoch
+#     num_iters = len(train_loader)
+#     # switch to train mode
+#     model.train()
+
+#     # main training loop
+#     print("\n[Train]: Epoch {:d} started".format(curr_epoch))
+#     start = time.time()
+#     for iter_idx, video_list in enumerate(train_loader, 0):
+#         # zero out optim
+#         optimizer.zero_grad(set_to_none=True)
+#         # forward / backward the model
+#         losses = model(video_list)
+#         losses['final_loss'].backward()
+#         # gradient cliping (to stabilize training if necessary)
+#         if clip_grad_l2norm > 0.0:
+#             torch.nn.utils.clip_grad_norm_(
+#                 model.parameters(),
+#                 clip_grad_l2norm
+#             )
+#         # step optimizer / scheduler
+#         optimizer.step()
+#         scheduler.step()
+
+#         if model_ema is not None:
+#             model_ema.update(model)
+
+#         # printing (only check the stats when necessary to avoid extra cost)
+#         if (iter_idx != 0) and (iter_idx % print_freq) == 0:
+#             # measure elapsed time (sync all kernels)
+#             torch.cuda.synchronize()
+#             batch_time.update((time.time() - start) / print_freq)
+#             start = time.time()
+
+#             # track all losses
+#             for key, value in losses.items():
+#                 # init meter if necessary
+#                 if key not in losses_tracker:
+#                     losses_tracker[key] = AverageMeter()
+#                 # update
+#                 losses_tracker[key].update(value.item())
+
+#             # log to tensor board
+#             lr = scheduler.get_last_lr()[0]
+#             global_step = curr_epoch * num_iters + iter_idx
+
+#             # print to terminal
+#             block1 = 'Epoch: [{:03d}][{:05d}/{:05d}]'.format(
+#                 curr_epoch, iter_idx, num_iters
+#             )
+#             block2 = 'Time {:.2f} ({:.2f})'.format(
+#                 batch_time.val, batch_time.avg
+#             )
+#             block3 = 'Loss {:.2f} ({:.2f})\n'.format(
+#                 losses_tracker['final_loss'].val,
+#                 losses_tracker['final_loss'].avg
+#             )
+#             block4 = ''
+#             for key, value in losses_tracker.items():
+#                 if key != "final_loss":
+#                     block4 += '\t{:s} {:.2f} ({:.2f})'.format(
+#                         key, value.val, value.avg
+#                     )
+
+#             print('\t'.join([block1, block2, block3, block4]))
+
+#     # finish up and print
+#     lr = scheduler.get_last_lr()[0]
+#     print("[Train]: Epoch {:d} finished with lr={:.8f}\n".format(curr_epoch, lr))
+#     return
+##############################################################################################################1
+
+
+
+############################ 2
 def train_one_epoch(
         train_loader,
         model,
@@ -265,6 +358,7 @@ def train_one_epoch(
 ):
     """Training the model for one epoch"""
     # set up meters
+    total_loss = 0.0
     batch_time = AverageMeter()
     losses_tracker = {}
     # number of iterations per epoch
@@ -290,6 +384,8 @@ def train_one_epoch(
         # step optimizer / scheduler
         optimizer.step()
         scheduler.step()
+        
+        total_loss += losses['final_loss'].item()
 
         if model_ema is not None:
             model_ema.update(model)
@@ -332,11 +428,16 @@ def train_one_epoch(
                     )
 
             print('\t'.join([block1, block2, block3, block4]))
+    
+
+    average_loss = total_loss / len(train_loader)
 
     # finish up and print
     lr = scheduler.get_last_lr()[0]
     print("[Train]: Epoch {:d} finished with lr={:.8f}\n".format(curr_epoch, lr))
-    return
+    return average_loss
+
+
 
 
 def valid_one_epoch(
@@ -366,6 +467,12 @@ def valid_one_epoch(
         'score': []
     }
 
+    #222
+    with open("/data1/zst/help_TriDet/VideoEvent/data/vocab/latest_1_10_vocabulary.pkl",'rb') as x:
+            didi = pickle.load(x)
+    dict2 = didi['dict2']
+
+
     # loop over validation set
     start = time.time()
     for iter_idx, video_list in enumerate(val_loader, 0):
@@ -386,6 +493,39 @@ def valid_one_epoch(
                     results['label'].append(output[vid_idx]['labels'])
                     results['score'].append(output[vid_idx]['scores'])
 
+
+                    # dick={0:"talk",1:"find",3:"come",4:"tell",2:"see"}   ##################构造分类label字典
+                    # json_file = "/data1/zst/help_TriDet/TriDet/data/videoevent/annotations/merged_latest_anno.json"
+                    # with open(json_file, 'r') as fid:
+                    #     json_data = json.load(fid)
+                    # json_db = json_data
+                    # cur_id = 0
+                    # dick = {}
+                    # id_token_dict = {}
+                    # for vid in json_db:
+                    #     for clip in vid["clip"]:
+                    #         if clip["event"] not in dick:
+                    #             dick[clip["event"]] = cur_id
+                    #             id_token_dict[cur_id] = clip["event"]
+                    #             cur_id +=1
+
+
+                  
+
+                    time_threshold = 0
+                    score_threshold = 0
+                    # Print the recognized segments for each video
+                    print(f"Video ID: {output[vid_idx]['video_id']}")
+                    for seg_idx in range(output[vid_idx]['segments'].shape[0]):
+                        start_time = output[vid_idx]['segments'][seg_idx, 0]
+                        end_time = output[vid_idx]['segments'][seg_idx, 1]
+                        label = output[vid_idx]['labels'][seg_idx]
+                        # haha = dick[label]
+                        score = output[vid_idx]['scores'][seg_idx]
+                        if (end_time-start_time >= time_threshold) and (score >= score_threshold):
+                            print(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {label.item()}, Score: {score}")
+                            #(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {dict2[label.item()]}, Score: {score}")
+
         # printing
         if (iter_idx != 0) and iter_idx % (print_freq) == 0:
             # measure elapsed time (sync all kernels)
@@ -404,11 +544,16 @@ def valid_one_epoch(
     results['label'] = torch.cat(results['label']).numpy()
     results['score'] = torch.cat(results['score']).numpy()
 
+    
+
     if evaluator is not None:
         if (ext_score_file is not None) and isinstance(ext_score_file, str):
             results = postprocess_results(results, ext_score_file)
+            
         # call the evaluator
         _, mAP = evaluator.evaluate(results, verbose=True)
+
+
     else:
         # dump to a pickle file that can be directly used for evaluation
         with open(output_file, "wb") as f:

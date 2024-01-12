@@ -4,11 +4,12 @@ import os
 import time
 import datetime
 from pprint import pprint
-
+import matplotlib.pyplot as plt
 # torch imports
 import torch
 import torch.nn as nn
 import torch.utils.data
+
 
 # our code
 from libs.core import load_config
@@ -115,9 +116,13 @@ def main(args):
         'early_stop_epochs',
         cfg['opt']['epochs'] + cfg['opt']['warmup_epochs']
     )
+
+    train_losses = []
+
+
     for epoch in range(args.start_epoch, max_epochs):
         # train for one epoch
-        train_one_epoch(
+        train_loss = train_one_epoch(
             train_loader,
             model,
             optimizer,
@@ -127,7 +132,7 @@ def main(args):
             clip_grad_l2norm=cfg['train_cfg']['clip_grad_l2norm'],
             print_freq=args.print_freq
         )
-
+        train_losses.append(train_loss)
         # save ckpt once in a while
         if (
                 (epoch == max_epochs - 1) or
@@ -151,6 +156,18 @@ def main(args):
                 file_folder=ckpt_folder,
                 file_name='epoch_{:03d}.pth.tar'.format(epoch)
             )
+
+    # Plot the loss curve and save it to the current directory
+    plt.plot(train_losses, label='Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training Loss Curve')
+    plt.legend()
+    plt.grid(True)
+
+    # Save the loss curve plot to the current directory
+    plt.savefig('1_10_training_loss_curve_200_epochs.png')  # 保存为PNG图片
+    plt.close()  # 关闭图形显示窗口
 
     print("All done!")
     return
