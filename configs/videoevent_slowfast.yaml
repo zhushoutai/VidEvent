@@ -28,7 +28,7 @@ model: {
 }
 opt: {
   learning_rate: 0.00001,
-  epochs: 200,
+  epochs: 500,
   weight_decay: 0.00001,
 }
 loader: {
@@ -48,4 +48,4 @@ test_cfg: {
   nms_sigma: 0.9,
   multiclass_nms: True,
 }
-output_folder: ./newckpt9/
+output_folder: ./newckpt10/
