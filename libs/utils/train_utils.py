@@ -466,6 +466,13 @@ def valid_one_epoch(
         'label': [],
         'score': []
     }
+    f_results = {
+        'video-id': [],
+        't-start': [],
+        't-end': [],
+        'label': [],
+        'score': []
+    }
 
     #222
     with open("/data1/zst/help_TriDet/VideoEvent/data/vocab/latest_1_10_vocabulary.pkl",'rb') as x:
@@ -485,6 +492,10 @@ def valid_one_epoch(
             for vid_idx in range(num_vids):
                 if output[vid_idx]['segments'].shape[0] > 0:
                     results['video-id'].extend(
+                        [output[vid_idx]['video_id']] *
+                        output[vid_idx]['segments'].shape[0]
+                    )
+                    f_results['video-id'].extend(
                         [output[vid_idx]['video_id']] *
                         output[vid_idx]['segments'].shape[0]
                     )
@@ -515,16 +526,16 @@ def valid_one_epoch(
                     time_threshold = 0
                     score_threshold = 0
                     # Print the recognized segments for each video
-                    print(f"Video ID: {output[vid_idx]['video_id']}")
-                    for seg_idx in range(output[vid_idx]['segments'].shape[0]):
-                        start_time = output[vid_idx]['segments'][seg_idx, 0]
-                        end_time = output[vid_idx]['segments'][seg_idx, 1]
-                        label = output[vid_idx]['labels'][seg_idx]
-                        # haha = dick[label]
-                        score = output[vid_idx]['scores'][seg_idx]
-                        if (end_time-start_time >= time_threshold) and (score >= score_threshold):
-                            print(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {label.item()}, Score: {score}")
-                            #(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {dict2[label.item()]}, Score: {score}")
+                    # print(f"Video ID: {output[vid_idx]['video_id']}")
+                    # for seg_idx in range(output[vid_idx]['segments'].shape[0]):
+                    #     start_time = output[vid_idx]['segments'][seg_idx, 0]
+                    #     end_time = output[vid_idx]['segments'][seg_idx, 1]
+                    #     label = output[vid_idx]['labels'][seg_idx]
+                    #     # haha = dick[label]
+                    #     score = output[vid_idx]['scores'][seg_idx]
+                    #     if (end_time-start_time >= time_threshold) and (score >= score_threshold):
+                    #         print(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {label.item()}, Score: {score}")
+                    #         #(f"Segment {seg_idx + 1}: Start: {start_time}, End: {end_time}, Label: {dict2[label.item()]}, Score: {score}")
 
         # printing
         if (iter_idx != 0) and iter_idx % (print_freq) == 0:
@@ -537,6 +548,14 @@ def valid_one_epoch(
             print('Test: [{0:05d}/{1:05d}]\t'
                   'Time {batch_time.val:.2f} ({batch_time.avg:.2f})'.format(
                 iter_idx, len(val_loader), batch_time=batch_time))
+            
+    
+        
+    f_results['t-start'] = torch.cat(results['t-start']).numpy().tolist()
+    f_results['t-end'] = torch.cat(results['t-end']).numpy().tolist()
+    f_results['label'] = torch.cat(results['label']).numpy().tolist()
+    f_results['score'] = torch.cat(results['score']).numpy().tolist()        
+    
 
     # gather all stats and evaluate
     results['t-start'] = torch.cat(results['t-start']).numpy()
@@ -544,14 +563,21 @@ def valid_one_epoch(
     results['label'] = torch.cat(results['label']).numpy()
     results['score'] = torch.cat(results['score']).numpy()
 
-    
+
+
+    # with open("/data1/zst/help_TriDet/TriDet/result_json/res_2_27.json","w", encoding="utf-8") as f:
+    #     json.dump(f_results,f, ensure_ascii=False)
+    #     print("result saved!")
 
     if evaluator is not None:
         if (ext_score_file is not None) and isinstance(ext_score_file, str):
             results = postprocess_results(results, ext_score_file)
-            
         # call the evaluator
-        _, mAP = evaluator.evaluate(results, verbose=True)
+        _, mAP,pred = evaluator.evaluate(results, verbose=True)
+        pred_dict = pred.to_dict(orient='records')
+        with open("/data1/zst/help_TriDet/TriDet/result_json/res_level_1.json", 'w',encoding="utf-8") as f:
+            json.dump(pred_dict, f, indent=4,ensure_ascii=False)
+
 
 
     else:
@@ -563,5 +589,7 @@ def valid_one_epoch(
     # log mAP to tb_writer
     if tb_writer is not None:
         tb_writer.add_scalar('validation/mAP', mAP, curr_epoch)
+
+
 
     return mAP

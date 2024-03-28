@@ -496,6 +496,7 @@ class VideoEventDataset(Dataset):
         if self.label_dict is None:
             label_dict = didi['dict1']
 
+        #### 重新更新为433个类
         ## date 1_12
         for k,v in label_dict.items():
             label_dict[k] = 0
@@ -527,7 +528,7 @@ class VideoEventDataset(Dataset):
                 assert False,"Unknown FPS"
 
             if "duration" in vid:
-                duration = vid["duration"]
+                duration = vid["duration"]/1000
             else:
                 duration = 1e8
 
@@ -575,7 +576,7 @@ class VideoEventDataset(Dataset):
             print('ERROR: feature file %s not found!' % filename)
         # with np.load(filename) as data:
         feats = np.load(filename, allow_pickle=True).astype(np.float32)
-        print('feat name and feats.shape', filename, feats.shape)
+        #print('feat name and feats.shape', filename, feats.shape)
         # deal with downsampling (= increased feat stride)
         feats = feats[::self.downsample_rate, :]
         feat_stride = self.feat_stride * self.downsample_rate
@@ -602,7 +603,7 @@ class VideoEventDataset(Dataset):
                      'duration'        : video_item['duration'],
                      'feat_stride'     : feat_stride,
                      'feat_num_frames' : self.num_frames}
-
+                    
         # truncate the features during training
         if self.is_training and (segments is not None):
             data_dict = truncate_feats(

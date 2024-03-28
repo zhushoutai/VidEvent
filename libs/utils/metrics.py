@@ -94,6 +94,7 @@ def load_gt_seg_from_json(json_file, split=None, label='label_id', label_offset=
             didi = pickle.load(x)
     label_dict = didi['dict1']
 
+    #### 重新修改类数目为433
     #date 1_12
     for k,v in label_dict.items():
         label_dict[k] =0
@@ -277,6 +278,9 @@ class ANETdetection(object):
 
         print(f"len_labels{len(self.activity_index)}")
 
+        #### 2-27
+        #preds = self.nms_by_class_and_time(preds)
+
         # compute mAP
         self.ap = self.wrapper_compute_average_precision(preds)
         #####1111
@@ -302,7 +306,106 @@ class ANETdetection(object):
             print('Avearge mAP: {:.2f} (%)'.format(average_mAP * 100))
 
         # return the results
-        return mAP, average_mAP
+        return mAP, average_mAP , preds
+
+    def nms_by_class_and_time(self, predictions, iou_threshold=1, score_threshold=0.0): #### 
+        """
+        应用基于时间的非极大值抑制（NMS），考虑动作类别和时间重叠。
+        
+        参数:
+        - predictions: 预测结果，pandas DataFrame，包含列 't-start', 't-end', 'label', 'score'。
+        - iou_threshold: IoU 阈值，用于判断重叠度。
+        - score_threshold: 分数阈值，只考虑高于此阈值的预测。
+        
+        返回:
+        - nms_predictions: 应用NMS后的预测结果。
+        """
+        if predictions.empty:
+            return predictions
+        
+        # 先过滤分数低于阈值的预测
+        predictions = predictions[predictions['score'] > score_threshold]
+        
+        # 按类别分组
+        grouped = predictions.groupby('label')
+        keep = []
+
+        for _, group in grouped:
+            # 按分数降序排列
+            indices = group['score'].argsort()[::-1]
+            group = group.iloc[indices]
+
+            while not group.empty:
+                # 保留当前最高分的预测
+                keep.append(group.iloc[0].name)
+                if group.shape[0] == 1:
+                    break
+
+                # 计算IoU
+                ious = self.calculate_iou(group.iloc[0], group.iloc[1:])
+
+                # 保留IoU小于阈值的预测
+                group = group.iloc[1:][ious <= iou_threshold]
+
+        nms_predictions = predictions.loc[keep].reset_index(drop=True)
+        return nms_predictions
+
+
+    @staticmethod
+    def calculate_iou(pred1, others):
+        """
+        计算IoU值。
+        
+        参数:
+        - pred1: 单个预测，pandas Series。
+        - others: 其他预测，pandas DataFrame。
+        
+        返回:
+        - ious: IoU值数组。
+        """
+        inter_left = np.maximum(pred1['t-start'], others['t-start'].values)
+        inter_right = np.minimum(pred1['t-end'], others['t-end'].values)
+        inter = np.maximum(0, inter_right - inter_left)
+
+        union = (pred1['t-end'] - pred1['t-start']) + (others['t-end'] - others['t-start']).values - inter
+        ious = inter / union
+        return ious
+    
+    # def nms(self, predictions, iou_threshold=0.3):
+    #     if predictions.empty:
+    #         return predictions
+
+    #     # Initialize an empty list to hold the final predictions
+    #     keep = []
+        
+    #     # Convert DataFrame to numpy for faster computation
+    #     x1 = predictions['t-start'].values
+    #     x2 = predictions['t-end'].values
+    #     scores = predictions['score'].values
+        
+    #     # Calculate the area of the predictions
+    #     areas = x2 - x1
+        
+    #     # Sort by scores (higher to lower)
+    #     idxs = scores.argsort()[::-1]
+        
+    #     while len(idxs) > 0:
+    #         # Take the top score prediction
+    #         i = idxs[0]
+    #         keep.append(i)
+            
+    #         # Calculate IoU of the top score prediction with the rest
+    #         xx1 = np.maximum(x1[i], x1[idxs[1:]])
+    #         xx2 = np.minimum(x2[i], x2[idxs[1:]])
+    #         inter = np.maximum(0, xx2 - xx1)
+    #         iou = inter / (areas[i] + areas[idxs[1:]] - inter)
+            
+    #         # Keep predictions with IoU less than the threshold
+    #         idxs = idxs[np.where(iou <= iou_threshold)[0] + 1]
+        
+    #     # Return DataFrame with NMS applied
+    #     return predictions.iloc[keep].reset_index(drop=True)
+
 
 
 def compute_average_precision_detection(
@@ -428,3 +531,4 @@ def interpolated_prec_rec(prec, rec):
     idx = np.where(mrec[1::] != mrec[0:-1])[0] + 1
     ap = np.sum((mrec[idx] - mrec[idx - 1]) * mprec[idx])
     return ap
+

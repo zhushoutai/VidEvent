@@ -166,7 +166,7 @@ def main(args):
     plt.grid(True)
 
     # Save the loss curve plot to the current directory
-    plt.savefig('1_10_training_loss_curve_200_epochs.png')  # 保存为PNG图片
+    plt.savefig('3_5_training_loss_curve_250_epochs.png')  # 保存为PNG图片
     plt.close()  # 关闭图形显示窗口
 
     print("All done!")
@@ -182,8 +182,8 @@ if __name__ == '__main__':
                         help='path to a config file')
     parser.add_argument('-p', '--print-freq', default=10, type=int,
                         help='print frequency (default: 10 iterations)')
-    parser.add_argument('-c', '--ckpt-freq', default=5, type=int,
-                        help='checkpoint frequency (default: every 5 epochs)')
+    parser.add_argument('-c', '--ckpt-freq', default=10, type=int,
+                        help='checkpoint frequency (default: every 10 epochs)')
     parser.add_argument('--output', default='', type=str,
                         help='name of exp folder (default: none)')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',

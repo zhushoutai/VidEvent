@@ -1,38 +1,42 @@
 dataset_name: videoevent
 train_split: ['training']
 val_split: ['validation']
+devices : [1]  #### 指定可用的显卡
 dataset: {
-  json_file: /data1/zst/help_TriDet/TriDet/data/videoevent/annotations/chg3_videoevent_latest.json,      #./data/videoevent/annotations/videoevent_new.json,
+  json_file: /data1/zst/help_TriDet/TriDet/data/videoevent/annotations/chg4_videoevent_latest.json,      #./data/videoevent/annotations/videoevent_new.json,
   # feat_folder: '/data2/video_feat_extract/slowfast_features_30fps',
   feat_folder: '/data1/data/tiktokCrawler/video_feat_extract/new_videnent_features',     #'/data1/zst/help_TriDet/slowfast_features',
   file_prefix: ,
   file_ext: .npy,
   num_classes: 1,   #433,   #502,      #1872,        #1366,                 #962, ###2   #1874
   input_dim: 2304,
-  feat_stride: 16,
+  feat_stride: 8,    #16,
   num_frames: 32,
   default_fps: 30,
   trunc_thresh: 0.3,
   crop_ratio: [0.9, 1.0],
-  max_seq_len: 2304,
+  max_seq_len: 1024,   #2304,    ####  修改T的长度
 }
 model: {
   regression_range: [ [ 0, 4 ], [ 2, 8 ], [ 4, 16 ], [ 8, 32 ], [ 16, 64 ], [ 32, 10000 ] ],
-  fpn_type: identity,
-  max_buffer_len_factor: 4.0,
+  fpn_type: identity,     #### neck的种类
+  max_buffer_len_factor: 4.0,   #### ???
   n_sgp_win_size: 5,
   num_bins: 16,
   iou_weight_power: 0.25,
   sgp_mlp_dim: 1024,
   k: 2,
+  n_mha_win_size: 9,
+  backbone_type: SGP,  ####  
+
 }
 opt: {
-  learning_rate: 0.00001,
-  epochs: 500,
+  learning_rate: 0.00001,  #### 学习率增大2倍
+  epochs: 200,
   weight_decay: 0.00001,
 }
 loader: {
-  batch_size: 2,
+  batch_size: 4,  #### 
 }
 train_cfg: {
   init_loss_norm: 100,
@@ -43,9 +47,10 @@ train_cfg: {
 }
 test_cfg: {
   pre_nms_topk: 5000,
-  max_seg_num: 2000,    #2000,
-  min_score: 0.001,
+  max_seg_num: 2000,    #2000,  
+  min_score: 0.2,  #### 
   nms_sigma: 0.9,
   multiclass_nms: True,
+  pre_nms_thresh: 0.2,   #### 修改置信度阈值大小  
 }
-output_folder: ./newckpt10/
+output_folder: ./newckpt20/
