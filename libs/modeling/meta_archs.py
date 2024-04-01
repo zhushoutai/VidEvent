@@ -526,7 +526,7 @@ class TriDet(nn.Module):
         # forward the network (backbone -> neck -> heads)
         feats, masks = self.backbone(batched_inputs, batched_masks)
        
-        print(f"back:{self.backbone}")
+        
         # feats: 6*B*512*2304    masks: 6*B*1*2304
         # print(f"feats--{len(feats)},{feats[0].shape}, masks--{masks[0].shape}")
         # print(f"feats--{len(feats)},{feats[0].shape}, masks--{masks[1].shape}")
@@ -655,7 +655,7 @@ class TriDet(nn.Module):
             results = self.inference(                        #### 修改测试，不同层级下的表现
                 video_list, points, fpn_masks,
                 out_cls_logits, out_offsets,
-                out_lb_logits, out_rb_logits,
+                out_lb_logits, out_rb_logits,  #[2].unsqueeze(0)
                 out_score_logits,   #### 新增参数
             )
           
@@ -1224,8 +1224,8 @@ class TriDet(nn.Module):
         for cls_i, offsets_i, pts_i, mask_i, sb_cls_i, eb_cls_i , score_i in zip(
                 out_cls_logits, out_offsets, points, fpn_masks, lb_logits_per_vid, rb_logits_per_vid,out_score_logits
         ):
-            # pred_prob = (cls_i.sigmoid() * mask_i.unsqueeze(-1)).flatten()
-            pred_prob = ( score_i * mask_i.unsqueeze(-1)).flatten()  #### 
+            pred_prob = (cls_i.sigmoid() * mask_i.unsqueeze(-1)).flatten()
+            #pred_prob = ( score_i * mask_i.unsqueeze(-1)).flatten()  #### 
             # Apply filtering to make NMS faster following detectron2
             # 1. Keep seg with confidence score > a threshold
             keep_idxs1 = (pred_prob > self.test_pre_nms_thresh)    # T*Class
@@ -1285,6 +1285,7 @@ class TriDet(nn.Module):
             # 5. Keep seg with duration > a threshold (relative to feature grids)
             seg_areas = seg_right - seg_left
             keep_idxs2 = seg_areas > self.test_duration_thresh
+            print(f"self.test_duration_thresh:{self.test_duration_thresh}")
 
             # *_all : N (filtered # of segments) x 2 / 1
             segs_all.append(pred_segs[keep_idxs2])
@@ -1324,6 +1325,7 @@ class TriDet(nn.Module):
             labels = results_per_vid['labels'].detach().cpu()
             if self.test_nms_method != 'none':
                 # 2: batched nms (only implemented on CPU)
+                print("start nms")
                 segs, scores, labels = batched_nms(
                     segs, scores, labels,
                     self.test_iou_threshold,

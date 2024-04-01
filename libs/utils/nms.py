@@ -161,6 +161,7 @@ def batched_nms(
     else:
         # class agnostic
         if use_soft_nms:
+            print(f"iou_threshold:  {iou_threshold}")
             new_segs, new_scores, new_cls_idxs = SoftNMSop.apply(
                 segs, scores, cls_idxs, iou_threshold,
                 sigma, min_score, 2, max_seg_num

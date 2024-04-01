@@ -24,6 +24,7 @@ from utils.vocabulary import Vocabulary,Word2VecSimilarity
 def main(args):
     """0. load config"""
     # sanity check
+    print(f"args.config:{args.config}")
     if os.path.isfile(args.config):
         cfg = load_config(args.config)
     else:

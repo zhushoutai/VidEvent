@@ -48,9 +48,10 @@ train_cfg: {
 test_cfg: {
   pre_nms_topk: 5000,
   max_seg_num: 2000,    #2000,  
-  min_score: 0.2,  #### 
+  min_score: 0.0,  #### 
   nms_sigma: 0.9,
-  multiclass_nms: True,
-  pre_nms_thresh: 0.2,   #### 修改置信度阈值大小  
+  multiclass_nms: False,  #### 
+  pre_nms_thresh: 0.0,   #### 修改置信度阈值大小  
+  iou_threshold: 0.9, #### NMS的配置 ，值越低抑制的越厉害
 }
 output_folder: ./newckpt21/
