@@ -1,7 +1,7 @@
 dataset_name: videoevent
 train_split: ['training']
 val_split: ['validation']
-devices : [1]  #### 指定可用的显卡
+devices : [0]  #### 指定可用的显卡
 dataset: {
   json_file: /data1/zst/help_TriDet/TriDet/data/videoevent/annotations/chg4_videoevent_latest.json,      #./data/videoevent/annotations/videoevent_new.json,
   # feat_folder: '/data2/video_feat_extract/slowfast_features_30fps',
@@ -31,12 +31,12 @@ model: {
 
 }
 opt: {
-  learning_rate: 0.00001,  #### 学习率增大2倍
-  epochs: 200,
+  learning_rate: 0.00002,  #### 学习率增大2倍
+  epochs: 300,
   weight_decay: 0.00001,
 }
 loader: {
-  batch_size: 4,  #### 
+  batch_size: 16,  #### 
 }
 train_cfg: {
   init_loss_norm: 100,
@@ -53,4 +53,4 @@ test_cfg: {
   multiclass_nms: True,
   pre_nms_thresh: 0.2,   #### 修改置信度阈值大小  
 }
-output_folder: ./newckpt20/
+output_folder: ./newckpt21/

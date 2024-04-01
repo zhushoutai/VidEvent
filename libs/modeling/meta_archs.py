@@ -276,32 +276,32 @@ class TriDet(nn.Module):
 
 
         #check the feature pyramid and local attention window size   #### 此处整个模块更换成actionformer的
-        # self.max_seq_len = max_seq_len
-        # if isinstance(n_sgp_win_size, int):
-        #     self.sgp_win_size = [n_sgp_win_size] * len(self.fpn_strides)
-        # else:
-        #     assert len(n_sgp_win_size) == len(self.fpn_strides)
-        #     self.sgp_win_size = n_sgp_win_size
-        # max_div_factor = 1
-        # for l, (s, w) in enumerate(zip(self.fpn_strides, self.sgp_win_size)):
-        #     stride = s * w if w > 1 else s
-        #     if max_div_factor < stride:
-        #         max_div_factor = stride
-        # self.max_div_factor = max_div_factor
-
-        self.max_seq_len = max_seq_len   #### 此处为新增的替换用于训练transformer
-        if isinstance(n_mha_win_size, int):
-            self.mha_win_size = [n_mha_win_size]*(1 + backbone_arch[-1])
+        self.max_seq_len = max_seq_len
+        if isinstance(n_sgp_win_size, int):
+            self.sgp_win_size = [n_sgp_win_size] * len(self.fpn_strides)
         else:
-            assert len(n_mha_win_size) == (1 + backbone_arch[-1])
-            self.mha_win_size = n_mha_win_size
+            assert len(n_sgp_win_size) == len(self.fpn_strides)
+            self.sgp_win_size = n_sgp_win_size
         max_div_factor = 1
-        for l, (s, w) in enumerate(zip(self.fpn_strides, self.mha_win_size)):
-            stride = s * (w // 2) * 2 if w > 1 else s
-            assert max_seq_len % stride == 0, "max_seq_len must be divisible by fpn stride and window size"
+        for l, (s, w) in enumerate(zip(self.fpn_strides, self.sgp_win_size)):
+            stride = s * w if w > 1 else s
             if max_div_factor < stride:
                 max_div_factor = stride
         self.max_div_factor = max_div_factor
+
+        # self.max_seq_len = max_seq_len   #### 此处为新增的替换用于训练transformer
+        # if isinstance(n_mha_win_size, int):
+        #     self.mha_win_size = [n_mha_win_size]*(1 + backbone_arch[-1])
+        # else:
+        #     assert len(n_mha_win_size) == (1 + backbone_arch[-1])
+        #     self.mha_win_size = n_mha_win_size
+        # max_div_factor = 1
+        # for l, (s, w) in enumerate(zip(self.fpn_strides, self.mha_win_size)):
+        #     stride = s * (w // 2) * 2 if w > 1 else s
+        #     assert max_seq_len % stride == 0, "max_seq_len must be divisible by fpn stride and window size"
+        #     if max_div_factor < stride:
+        #         max_div_factor = stride
+        # self.max_div_factor = max_div_factor
 
         
         
@@ -520,13 +520,13 @@ class TriDet(nn.Module):
     def forward(self, video_list):
         # batch the video list into feats (B, C, T) and masks (B, 1, T)
         batched_inputs, batched_masks = self.preprocessing(video_list)
-        print("Begin input0 dim:")
+        print("Begin input_0 dim:")
         print(video_list[0]["feats"].shape)
         # 1*2304*2304              
         # forward the network (backbone -> neck -> heads)
         feats, masks = self.backbone(batched_inputs, batched_masks)
        
-        #print(f"back:{self.backbone}")
+        print(f"back:{self.backbone}")
         # feats: 6*B*512*2304    masks: 6*B*1*2304
         # print(f"feats--{len(feats)},{feats[0].shape}, masks--{masks[0].shape}")
         # print(f"feats--{len(feats)},{feats[0].shape}, masks--{masks[1].shape}")
@@ -597,7 +597,6 @@ class TriDet(nn.Module):
         # fpn_masks: F list[B, 1, T_i] -> F List[B, T_i]
         fpn_masks = [x.squeeze(1) for x in fpn_masks]
 
-        
 
         #out_score_logits = [x.permute(0, 2, 1) for x in out_score_logits]
 
@@ -608,13 +607,16 @@ class TriDet(nn.Module):
             assert video_list[0]['labels'] is not None, "GT action labels does not exist"
             gt_segments = [x['segments'].to(self.device) for x in video_list]
             gt_labels = [x['labels'].to(self.device) for x in video_list]
-
+            # print(video_list[0]['video_id'])
+            # print(gt_segments[0])
             # compute the gt labels for cls & reg
             # list of prediction targets
             gt_cls_labels, gt_offsets = self.label_points(
                 points, gt_segments, gt_labels)
-            
-            #### 生成score的GT数据
+            # print(f"gt offsets : [{len(gt_offsets)} , {gt_offsets[0].size()}]")
+            # print(gt_offsets[0][0:1024])
+
+            # #### 生成score的GT数据
             gt_scores = []
             feature_levels = [feat.shape[-1] for feat in fpn_feats]
             #receptive_fields = [self.max_seq_len//feat.shape[-1] for feat in fpn_feats]
@@ -625,6 +627,17 @@ class TriDet(nn.Module):
                     weights = compute_weights_for_level_inside_segment(T,rf,gt_seg,T_total=self.max_seq_len,device=self.device)   
                     gt_score += (weights,)
                 gt_scores.append(gt_score)     
+            
+            # #### 生成每个段的预测置信度
+            # bt_segs = self.get_pred_segs(video_list, points, fpn_masks,
+            #     out_cls_logits, out_offsets,
+            #     out_lb_logits, out_rb_logits,
+            #     out_score_logits)
+
+            # print("test")
+            # print(len(bt_segs))
+            # print(bt_segs[0].size())
+            # print(bt_segs[1].size())
 
             # compute the loss and return   #### 更新loss函数
             losses = self.new_losses(
@@ -637,13 +650,13 @@ class TriDet(nn.Module):
             return losses
 
         else:
-            out_score_logits = [x.permute(0,2,1) for x in out_score_logits]   # B 1 T -> B T 1  #### 
             # decode the actions (sigmoid / stride, etc)
+            out_score_logits = [x.permute(0,2,1) for x in out_score_logits]   # B 1 T -> B T 1  #### 
             results = self.inference(                        #### 修改测试，不同层级下的表现
-                video_list, points[4].unsqueeze(0), fpn_masks[4].unsqueeze(0),
-                out_cls_logits[4].unsqueeze(0), out_offsets[4].unsqueeze(0),
-                out_lb_logits[4].unsqueeze(0), out_rb_logits[4].unsqueeze(0),
-                out_score_logits[4].unsqueeze(0),   #### 新增参数
+                video_list, points, fpn_masks,
+                out_cls_logits, out_offsets,
+                out_lb_logits, out_rb_logits,
+                out_score_logits,   #### 新增参数
             )
           
             return results
@@ -952,7 +965,7 @@ class TriDet(nn.Module):
         else:
             pred_offsets = decoded_offsets
             gt_offsets = torch.stack(gt_offsets)[pos_mask]
-
+       
         # update the loss normalizer
         num_pos = pos_mask.sum().item()
         self.loss_normalizer = self.loss_normalizer_momentum * self.loss_normalizer + (
@@ -975,6 +988,14 @@ class TriDet(nn.Module):
 
         if self.use_trident_head:
             # couple the classification loss with iou score
+            # print("pred")
+            # print(len(pred_offsets))
+            # print(pred_offsets[0].size())
+            # print(pred_offsets)
+            # print("gt")
+            # print(len(gt_offsets))
+            # print(gt_offsets[0].size())
+            # print(gt_offsets)
             iou_rate = ctr_giou_loss_1d(
                 pred_offsets,
                 gt_offsets,
@@ -1269,6 +1290,11 @@ class TriDet(nn.Module):
             segs_all.append(pred_segs[keep_idxs2])
             scores_all.append(pred_prob[keep_idxs2])
             cls_idxs_all.append(cls_idxs[keep_idxs2])
+            ####
+            print("Starting eval debug")
+            print(pred_segs[keep_idxs2].shape)  # 264,2
+            print(pred_prob[keep_idxs2].shape)  # 264
+            print(score_i.shape)  # 1,1024,1   |   1,512,1 ...  | 1,32,1
 
         # cat along the FPN levels (F N_i, C)
         segs_all, scores_all, cls_idxs_all = [
@@ -1347,5 +1373,52 @@ class TriDet(nn.Module):
 
         return processed_results
 
+    @torch.no_grad()
+    def get_pred_segs(
+            self,
+            video_list,
+            points, fpn_masks,
+            out_cls_logits, out_offsets,
+            out_lb_logits, out_rb_logits,
+            out_score_logits,  
+    ):
+        # video_list B (list) [dict]
+        # points F (list) [T_i, 4]
+        # fpn_masks, out_*: F (List) [B, T_i, C]
+        results = []
+        # 1: gather video meta information
+        vid_idxs = [x['video_id'] for x in video_list]
+        vid_fps = [x['fps'] for x in video_list]
+        vid_lens = [x['duration'] for x in video_list]
+        vid_ft_stride = [x['feat_stride'] for x in video_list]
+        vid_ft_nframes = [x['feat_num_frames'] for x in video_list]
 
+        # 2: inference on each single video and gather the results
+        # upto this point, all results use timestamps defined on feature grids
+        for idx, (vidx, fps, vlen, stride, nframes) in enumerate(
+                zip(vid_idxs, vid_fps, vid_lens, vid_ft_stride, vid_ft_nframes)
+        ):
+            # gather per-video outputs
+            cls_logits_per_vid = [x[idx] for x in out_cls_logits]
+            offsets_per_vid = [x[idx] for x in out_offsets]
+            fpn_masks_per_vid = [x[idx] for x in fpn_masks]
+
+            if self.use_trident_head:
+                lb_logits_per_vid = [x[idx] for x in out_lb_logits]
+                rb_logits_per_vid = [x[idx] for x in out_rb_logits]
+            else:
+                lb_logits_per_vid = [None for x in range(len(out_cls_logits))]
+                rb_logits_per_vid = [None for x in range(len(out_cls_logits))]
+
+            # inference on a single video (should always be the case)
+            results_per_vid = self.new_inference_single_video(
+                points, fpn_masks_per_vid,
+                cls_logits_per_vid, offsets_per_vid,
+                lb_logits_per_vid, rb_logits_per_vid, out_score_logits
+            )
+            results.append(results_per_vid['segments'])
+
+        return results
+
+        
         
