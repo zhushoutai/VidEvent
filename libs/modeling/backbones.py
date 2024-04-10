@@ -89,6 +89,7 @@ class SGPBackbone(nn.Module):
         # x: batch size, feature channel, sequence length,
         # mask: batch size, 1, sequence length (bool)
         B, C, T = x.size()
+        print(f"b:{B},c:{C},t:{T}")
         # embedding network
         for idx in range(len(self.embd)):
             x, mask = self.embd[idx](x, mask)

@@ -13,7 +13,7 @@ import torch.optim as optim
 from .lr_schedulers import LinearWarmupMultiStepLR, LinearWarmupCosineAnnealingLR
 from .postprocessing import postprocess_results
 from ..modeling import MaskedConv1D, Scale, AffineDropPath, LayerNorm
-
+from ..modeling.blocks import CustomTransformerEncoderLayer, CustomTransformerEncoder
 import pickle
 from utils.vocabulary import Vocabulary,Word2VecSimilarity
 
@@ -59,65 +59,106 @@ def print_model_params(model):
     return
 
 
+# def make_optimizer(model, optimizer_config):
+#     """create optimizer
+#     return a supported optimizer
+#     """
+#     # separate out all parameters that with / without weight decay
+#     # see https://github.com/karpathy/minGPT/blob/master/mingpt/model.py#L134
+#     decay = set()
+#     no_decay = set()
+#     whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv1d, MaskedConv1D)
+#     blacklist_weight_modules = (LayerNorm, torch.nn.GroupNorm)
+
+#     # loop over all modules / params
+#     for mn, m in model.named_modules():
+#         for pn, p in m.named_parameters():
+#             fpn = '%s.%s' % (mn, pn) if mn else pn  # full param name
+#             if pn.endswith('bias'):
+#                 # all biases will not be decayed
+#                 no_decay.add(fpn)
+#             elif pn.endswith('weight') and isinstance(m, whitelist_weight_modules):
+#                 # weights of whitelist modules will be weight decayed
+#                 decay.add(fpn)
+#             elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
+#                 # weights of blacklist modules will NOT be weight decayed
+#                 no_decay.add(fpn)
+#             elif pn.endswith('scale') and isinstance(m, (Scale, AffineDropPath)):
+#                 # corner case of our scale layer
+#                 no_decay.add(fpn)
+#             elif pn.endswith('rel_pe'):
+#                 # corner case for relative position encoding
+#                 no_decay.add(fpn)
+
+#     # validate that we considered every parameter
+#     param_dict = {pn: p for pn, p in model.named_parameters()}
+#     inter_params = decay & no_decay
+#     union_params = decay | no_decay
+#     assert len(inter_params) == 0, "parameters %s made it into both decay/no_decay sets!" % (str(inter_params),)
+#     assert len(param_dict.keys() - union_params) == 0, \
+#         "parameters %s were not separated into either decay/no_decay set!" \
+#         % (str(param_dict.keys() - union_params),)
+
+#     # create the pytorch optimizer object
+#     optim_groups = [
+#         {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": optimizer_config['weight_decay']},
+#         {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
+#     ]
+
+#     if optimizer_config["type"] == "SGD":
+#         optimizer = optim.SGD(
+#             optim_groups,
+#             lr=optimizer_config["learning_rate"],
+#             momentum=optimizer_config["momentum"]
+#         )
+#     elif optimizer_config["type"] == "AdamW":
+#         optimizer = optim.AdamW(
+#             optim_groups,
+#             lr=optimizer_config["learning_rate"]
+#         )
+#     else:
+#         raise TypeError("Unsupported optimizer!")
+
+#     return optimizer
+
 def make_optimizer(model, optimizer_config):
-    """create optimizer
-    return a supported optimizer
-    """
-    # separate out all parameters that with / without weight decay
-    # see https://github.com/karpathy/minGPT/blob/master/mingpt/model.py#L134
-    decay = set()
-    no_decay = set()
-    whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv1d, MaskedConv1D)
-    blacklist_weight_modules = (LayerNorm, torch.nn.GroupNorm)
+    """Create optimizer, correctly handling parameters for weight decay."""
+    decay_params = set()
+    no_decay_params = set()
+    
+    # Define your module types which should not have weight decay applied
+    blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.GroupNorm)
+    for module_name, module in model.named_modules():
+        for name, param in module.named_parameters(recurse=False):
+            full_param_name = f"{module_name}.{name}" if module_name else name
 
-    # loop over all modules / params
-    for mn, m in model.named_modules():
-        for pn, p in m.named_parameters():
-            fpn = '%s.%s' % (mn, pn) if mn else pn  # full param name
-            if pn.endswith('bias'):
-                # all biases will not be decayed
-                no_decay.add(fpn)
-            elif pn.endswith('weight') and isinstance(m, whitelist_weight_modules):
-                # weights of whitelist modules will be weight decayed
-                decay.add(fpn)
-            elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
-                # weights of blacklist modules will NOT be weight decayed
-                no_decay.add(fpn)
-            elif pn.endswith('scale') and isinstance(m, (Scale, AffineDropPath)):
-                # corner case of our scale layer
-                no_decay.add(fpn)
-            elif pn.endswith('rel_pe'):
-                # corner case for relative position encoding
-                no_decay.add(fpn)
+            if any(isinstance(module, t) for t in blacklist_weight_modules):
+                # Exclude parameters of blacklisted module types (e.g., LayerNorm, GroupNorm)
+                no_decay_params.add(full_param_name)
+            elif "bias" in name or "norm" in name:
+                # Exclude biases and normalization parameters
+                no_decay_params.add(full_param_name)
+            else:
+                decay_params.add(full_param_name)
 
-    # validate that we considered every parameter
-    param_dict = {pn: p for pn, p in model.named_parameters()}
-    inter_params = decay & no_decay
-    union_params = decay | no_decay
-    assert len(inter_params) == 0, "parameters %s made it into both decay/no_decay sets!" % (str(inter_params),)
-    assert len(param_dict.keys() - union_params) == 0, \
-        "parameters %s were not separated into either decay/no_decay set!" \
-        % (str(param_dict.keys() - union_params),)
+    # Make sure no parameters are in both sets
+    overlap = decay_params & no_decay_params
+    assert len(overlap) == 0, f"Overlap found in decay/no_decay parameters: {overlap}"
 
-    # create the pytorch optimizer object
-    optim_groups = [
-        {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": optimizer_config['weight_decay']},
-        {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
+    # Prepare optimizer parameter groups
+    param_dict = {p_name: p for p_name, p in model.named_parameters()}
+    optimizer_groups = [
+        {"params": [param_dict[p_name] for p_name in sorted(list(decay_params))], "weight_decay": optimizer_config['weight_decay']},
+        {"params": [param_dict[p_name] for p_name in sorted(list(no_decay_params))], "weight_decay": 0.0}
     ]
 
-    if optimizer_config["type"] == "SGD":
-        optimizer = optim.SGD(
-            optim_groups,
-            lr=optimizer_config["learning_rate"],
-            momentum=optimizer_config["momentum"]
-        )
-    elif optimizer_config["type"] == "AdamW":
-        optimizer = optim.AdamW(
-            optim_groups,
-            lr=optimizer_config["learning_rate"]
-        )
+    # Create the optimizer
+    if optimizer_config["type"].lower() == "sgd":
+        optimizer = optim.SGD(optimizer_groups, lr=optimizer_config["learning_rate"], momentum=optimizer_config["momentum"])
+    elif optimizer_config["type"].lower() == "adamw":
+        optimizer = optim.AdamW(optimizer_groups, lr=optimizer_config["learning_rate"])
     else:
-        raise TypeError("Unsupported optimizer!")
+        raise ValueError(f"Unsupported optimizer type: {optimizer_config['type']}")
 
     return optimizer
 

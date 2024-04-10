@@ -168,3 +168,25 @@ def ctr_diou_loss_1d(
         loss = loss.sum()
 
     return loss
+
+
+@torch.jit.script
+def huber_loss(y_true: torch.Tensor, y_pred: torch.Tensor, delta: float = 1.0) -> torch.Tensor:
+    """
+    计算Huber损失，兼容TorchScript的实现。
+    
+    参数:
+    - y_true: 真实值的张量。
+    - y_pred: 预测值的张量。
+    - delta: Huber损失的阈值，决定误差在哪一点上从平方切换到线性，默认值为1.0。
+    
+    返回:
+    - 计算得到的Huber损失的张量。
+    """
+    abs_error = torch.abs(y_true - y_pred)
+    is_small_error = abs_error <= delta
+    squared_loss = 0.5 * (abs_error ** 2)
+    linear_loss = delta * (abs_error - 0.5 * delta)
+    
+    loss = torch.where(is_small_error, squared_loss, linear_loss)
+    return loss.mean()

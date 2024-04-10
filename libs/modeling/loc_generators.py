@@ -79,7 +79,7 @@ class PointGenerator(nn.Module):
 
     def forward(self, feats):
         # feats will be a list of torch tensors
-        assert len(feats) == self.fpn_levels
+        #assert len(feats) == self.fpn_levels    #### #
         pts_list = []
         feat_lens = [feat.shape[-1] for feat in feats]
         for feat_len, buffer_pts in zip(feat_lens, self.buffer_points):
